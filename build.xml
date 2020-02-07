@@ -1,0 +1,230 @@
+<?xml version="1.0"?>
+<project name="task13" basedir="." default="all"
+         xmlns:jacoco="antlib:org.jacoco.ant"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <!-- Property -->
+    <property name="src.dir" value="src/com/nixsolutions"/>
+    <property name="src.dir.test" value="test/com/nixsolutions/d"/>
+    <property name="lib.dir" value="lib"/>
+
+    <property name="build.dir" value="build"/>
+    <property name="build.dir.test" value="build/testBuild"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="classes.dir.test" value="${build.dir}/testClasses"/>
+    <property name="jar.dir" value="${build.dir}/jar"/>
+
+    <property name="report.dir" value="${build.dir}/reports"/>
+    <property name="checkstyle.report.dir" value="${report.dir}/checkstyle"/>
+    <property name="pmd.report.dir" value="${report.dir}/pmd"/>
+    <property name="findbugs.report.dir" value="${report.dir}/findbugs"/>
+    <property name="junit.report.dir" value="${report.dir}/junit"/>
+    <property name="jacoco.report.dir" value="${report.dir}/jacoco"/>
+
+
+    <!--Checkstyle config -->
+    <property name="checkstyle.config"
+              value="${lib.dir}/sun-check.xml"/>
+    <property name="checkstyle.xsl"
+              value="${lib.dir}/checkstyle.xsl"/>
+
+    <!-- ClassPath -->
+    <path id="classpath">
+        <fileset dir="${lib.dir}"
+                 includes="**/*.jar"/>
+        <pathelement location="${classes.dir}"/>
+        <pathelement location="${classes.dir.test}"/>
+    </path>
+
+    <taskdef name="junit"
+             classname="org.apache.tools.ant.taskdefs.optional.junit.JUnitTask">
+        <classpath>
+            <path refid="classpath"/>
+        </classpath>
+    </taskdef>
+
+    <!-- Clean -->
+    <target name="clean" description="Removes all temporary files">
+        <!-- Erases files -->
+        <delete dir="${build.dir}"/>
+        <delete>
+            <fileset dir="." includes="**/*~" defaultexcludes="no"/>
+        </delete>
+    </target>
+
+    <!-- Compile -->
+    <target name="compile" description="Compile project">
+        <mkdir dir="${classes.dir}"/>
+        <javac srcdir="${src.dir}" destdir="${classes.dir}"
+               classpathref="classpath" includeantruntime="false">
+            <compilerarg value="-Xlint:unchecked"/>
+
+        </javac>
+    </target>
+
+    <!-- Testcompile -->
+    <target name="testcompile" depends="compile"
+            description="Compile test of project">
+        <mkdir dir="${classes.dir.test}"/>
+        <javac srcdir="${src.dir.test}" destdir="${classes.dir.test}"
+               classpathref="classpath" includeantruntime="false">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+
+    <!-- Test -->
+    <target name="test" depends="testcompile" description="Launch tests">
+        <mkdir dir="${build.dir.test}"/>
+        <junit fork="yes" printsummary="yes" haltonfailure="no">
+            <classpath refid="classpath"/>
+            <formatter type="xml"/>
+            <batchtest fork="yes" todir="${build.dir.test}">
+                <fileset dir="${classes.dir.test}">
+                    <exclude name="**/TesterImpl.*"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <!-- Jar -->
+    <target name="jar" depends="compile, testcompile"
+            description="Creating a jar">
+        <mkdir dir="${jar.dir}"/>
+        <jar destfile="${jar.dir}/${ant.project.name}.jar"
+             basedir="${classes.dir}"/>
+
+    </target>
+
+    <!-- Checkstyle -->
+    <taskdef
+            resource="com/puppycrawl/tools/checkstyle/ant/checkstyle-ant-task.properties"
+            classpath="${lib.dir}/checkstyle-8.29-all"/>
+    <target name="checkstyle" depends="compile, pmd, findbugs"
+            description="Code check style">
+        <mkdir dir="${checkstyle.report.dir}"/>
+        <checkstyle config="${lib.dir}/checkstyle-8.29-all/sun_checks.xml"
+                    failonviolation="false">
+            <fileset dir="${src.dir}" includes="**/*.java"
+                     excludes="**/*Usage.java"/>
+            <formatter type="xml"
+                       tofile="${checkstyle.report.dir}/checkstyle_report.xml"/>
+        </checkstyle>
+
+        <xslt in="${checkstyle.report.dir}/checkstyle_report.xml"
+              out="${checkstyle.report.dir}/checkstyle_report.html"
+              style="lib/checkstyle-8.29-all/checkstyle-simple.xsl"/>
+    </target>
+
+    <!-- pmd -->
+    <path id="pmd.classpath">
+        <fileset dir="${lib.dir}/pmd-bin-4.2.6/lib">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+    <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask"
+             classpathref="pmd.classpath">
+    </taskdef>
+    <target name="pmd">
+        <mkdir dir="${pmd.report.dir}"/>
+        <pmd rulesetfiles="rulesets/favorites.xml">
+            <formatter type="xml" toFile="${pmd.report.dir}/pmd_report.xml"/>
+            <fileset dir="${src.dir}">
+                <include name="**/*.java"/>
+                <exclude name="**/Usage*.java"/>
+            </fileset>
+        </pmd>
+        <xslt style="${lib.dir}/pmd-bin-4.2.6/etc/xslt/pmd-report-per-class.xslt"
+              in="${pmd.report.dir}/pmd_report.xml"
+              out="${pmd.report.dir}/pmd_report.html"/>
+    </target>
+
+
+    <!-- Findbugs -->
+    <taskdef name="findbugs"
+             classname="edu.umd.cs.findbugs.anttask.FindBugsTask"
+             classpath="${lib.dir}/findbugs-3.0.1/lib/findbugs-ant.jar">
+    </taskdef>
+    <target name="findbugs" depends="compile">
+        <mkdir dir="${findbugs.report.dir}"/>
+        <findbugs home="${lib.dir}/findbugs-3.0.1"
+                  effort="max"
+                  output="xml:withMessages"
+                  outputFile="${findbugs.report.dir}/findbugs_report.xml"
+                  stylesheet="${basedir}/findbugs/fancy-hist.xsl">
+            <class location="${basedir}/build"/>
+            <sourcepath refid="classpath"/>
+            <auxclasspath>
+                <fileset dir="${lib.dir}" includes="**/*.jar"/>
+            </auxclasspath>
+        </findbugs>
+        <xslt style="${lib.dir}/findbugs-3.0.1/src/xsl/fancy.xsl"
+              in="${findbugs.report.dir}/findbugs_report.xml"
+              out="${findbugs.report.dir}/findbugs_report.html"/>
+    </target>
+
+    <!-- JUnit -->
+    <target name="testreport"
+            depends="test"
+            description="Generates report of jUnit testing">
+        <!--        <mkdir dir="${junit.report.dir}"/>-->
+        <junitreport todir="${build.dir.test}">
+            <fileset dir="${build.dir.test}">
+                <include name="*.xml"/>
+            </fileset>
+            <report format="frames" todir="${junit.report.dir}"/>
+        </junitreport>
+    </target>
+
+    <!-- Testcoverage-->
+    <taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml">
+        <classpath path="lib/jacoco-0.8.5/lib/jacocoant.jar" />
+    </taskdef>
+    <target name="testcoverage" depends="testcompile"
+            description="Coverage of tests">
+        <mkdir dir="${jacoco.report.dir}"/>
+        <jacoco:coverage destfile="${jacoco.report.dir}/jacoco.exec">
+            <junit printsummary="yes" haltonfailure="no" fork="true" forkmode="once">
+
+                <classpath refid="classpath" />
+                <formatter type="xml" />
+                <batchtest todir="${jacoco.report.dir}">
+                    <fileset dir="${classes.dir.test}">
+                        <exclude name="**/TesterImpl.*"/>
+                    </fileset>
+                </batchtest>
+            </junit>
+        </jacoco:coverage>
+        <jacoco:report>
+            <executiondata>
+                <file file="${jacoco.report.dir}/jacoco.exec" />
+            </executiondata>
+
+            <structure name="AntTestReporting">
+                <classfiles>
+                    <fileset dir="${build.dir}"/>
+                    <!--                    <fileset dir="${classes.dir}"/>-->
+                </classfiles>
+                <sourcefiles encoding="UTF-8">
+                    <fileset dir="${src.dir}"/>
+                </sourcefiles>
+            </structure>
+
+            <html destdir="${jacoco.report.dir}" encoding="UTF-8" />
+        </jacoco:report>
+
+
+
+
+    </target>
+
+
+    <target name="run" depends="jar">
+        <java jar="${jar.dir}/${ant.project.name}.jar"
+              fork="true"/>
+    </target>
+
+    <target name="all"
+            depends="clean, compile, testcompile, test, testreport, jar, checkstyle, testcoverage, run"/>
+
+</project>

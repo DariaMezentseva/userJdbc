@@ -74,7 +74,7 @@ public class JdbcUserDao extends User implements UserDao {
             preparedStatement.setString(5, user.getLastName());
             preparedStatement.setDate(6, new java.sql.Date(user.getBirthday().getTime()));
             preparedStatement.setLong(7, user.getRoleId());
-            preparedStatement.setLong(7, user.getId());
+            preparedStatement.setLong(8, user.getId());
 
             System.out.println(preparedStatement);
 
@@ -93,7 +93,9 @@ public class JdbcUserDao extends User implements UserDao {
         try (Connection connection = AbstractJdbcDao.createConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(DELETE_USER)) {
             preparedStatement.setLong(1, user.getId());
+
             System.out.println(preparedStatement);
+            preparedStatement.executeUpdate();
 
         } catch (SQLException e) {
             AbstractJdbcDao.printSQLException(e);
@@ -106,10 +108,12 @@ public class JdbcUserDao extends User implements UserDao {
         System.out.println(FIND_ALL_USERS);
         List<User> list = new ArrayList<>();
 
-        try (Connection connection = AbstractJdbcDao.createConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(FIND_USER_BY_LOGIN)) {
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
+        try (Connection connection = AbstractJdbcDao.createConnection())
+             //PreparedStatement preparedStatement = connection.prepareStatement(FIND_ALL_USERS))
+             {
+                 Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(FIND_ALL_USERS);
+            while (resultSet.next()) {
                 User user = new User();
                 user.setId(resultSet.getLong(ID));
                 user.setLogin(resultSet.getString(LOGIN));

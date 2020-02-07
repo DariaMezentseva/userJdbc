@@ -21,7 +21,7 @@ public class JdbcRoleDao extends Role implements RoleDao {
     private static final String FIND_ROLE_BY_NAME =
         "SELECT * FROM role WHERE name =?";
 
-    private static final String ROLE_ID = "ROLE_ID";
+    private static final String ROLE_ID = "ID";
     private static final String ROLE_NAME = "NAME";
 
     @Override
